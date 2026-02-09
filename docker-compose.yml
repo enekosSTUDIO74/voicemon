@@ -1,0 +1,117 @@
+# VoiceMon — Docker Compose Stack
+# Full observability infrastructure for voice AI pipelines
+#
+# Usage:
+#   docker compose up -d
+#   docker compose exec timescale psql -U voicemon -d voicemon -f /schema/schema.sql
+
+services:
+  # ── TimescaleDB (primary store) ───────────────────────────────────────
+  timescale:
+    image: timescale/timescaledb:latest-pg16
+    container_name: voicemon-timescale
+    environment:
+      POSTGRES_USER: voicemon
+      POSTGRES_PASSWORD: voicemon
+      POSTGRES_DB: voicemon
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./voicemon/storage/schema.sql:/schema/schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voicemon"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis (stream ingestion) ──────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: voicemon-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Prometheus (metrics / SLOs) ───────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: voicemon-prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    depends_on:
+      - redis
+
+  # ── Grafana (ops dashboard) ───────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: voicemon-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: voicemon
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/voicemon_dashboard.json
+    volumes:
+      - ./voicemon/dashboards/grafana/voicemon_dashboard.json:/var/lib/grafana/dashboards/voicemon_dashboard.json:ro
+      - ./voicemon/dashboards/grafana/provisioning.yaml:/etc/grafana/provisioning/dashboards/provisioning.yaml:ro
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - timescale
+
+  # ── Metrics Worker (Redis → TimescaleDB) ──────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: voicemon-worker
+    command: python -m voicemon.workers.processor
+    environment:
+      VOICEMON_REDIS_URL: redis://redis:6379/0
+      VOICEMON_TIMESCALE_DSN: postgresql://voicemon:voicemon@timescale:5432/voicemon
+      VOICEMON_SLACK_WEBHOOK: ${VOICEMON_SLACK_WEBHOOK:-}
+      VOICEMON_PAGERDUTY_KEY: ${VOICEMON_PAGERDUTY_KEY:-}
+    depends_on:
+      timescale:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Streamlit Dashboard ───────────────────────────────────────────────
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: voicemon-streamlit
+    command: streamlit run voicemon/dashboards/streamlit_app.py --server.port=8501 --server.address=0.0.0.0
+    ports:
+      - "8501:8501"
+    environment:
+      VOICEMON_TIMESCALE_DSN: postgresql://voicemon:voicemon@timescale:5432/voicemon
+    depends_on:
+      timescale:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  timescale_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:

@@ -1,0 +1,168 @@
+# VoiceMon Alert Rules
+# Defines thresholds and routing for voice pipeline monitoring.
+# See: Hamming AI 4-Layer Voice Observability Framework
+
+rules:
+  # ── Layer 1: Infrastructure ─────────────────────────────────────────
+  - name: high_jitter
+    description: "Network jitter exceeds acceptable threshold"
+    metric: jitter_ms
+    operator: ">"
+    threshold: 30
+    severity: warning
+    cooldown_minutes: 10
+    notify: [slack]
+    tags: [infra, network]
+
+  - name: high_packet_loss
+    description: "Packet loss affecting audio quality"
+    metric: packet_loss_pct
+    operator: ">"
+    threshold: 3.0
+    severity: critical
+    cooldown_minutes: 5
+    notify: [slack, pagerduty]
+    tags: [infra, network]
+
+  - name: low_mos_score
+    description: "Mean Opinion Score below acceptable quality"
+    metric: mos_score
+    operator: "<"
+    threshold: 3.5
+    severity: warning
+    cooldown_minutes: 10
+    notify: [slack]
+    tags: [infra, quality]
+
+  # ── Layer 2: Execution Pipeline ─────────────────────────────────────
+  - name: stt_latency_warning
+    description: "STT recognition latency elevated"
+    metric: stt_latency_ms
+    operator: ">"
+    threshold: 500
+    severity: warning
+    cooldown_minutes: 5
+    notify: [slack]
+    tags: [stt, latency]
+
+  - name: stt_latency_critical
+    description: "STT recognition latency critical — users hear silence"
+    metric: stt_latency_ms
+    operator: ">"
+    threshold: 1000
+    severity: critical
+    cooldown_minutes: 3
+    notify: [slack, pagerduty]
+    tags: [stt, latency]
+
+  - name: stt_confidence_low
+    description: "STT confidence dropping — possible model drift or noise"
+    metric: stt_confidence
+    operator: "<"
+    threshold: 0.7
+    severity: warning
+    cooldown_minutes: 10
+    notify: [slack]
+    tags: [stt, quality]
+
+  - name: stt_confidence_critical
+    description: "STT confidence critically low — agent misunderstanding users"
+    metric: stt_confidence
+    operator: "<"
+    threshold: 0.5
+    severity: critical
+    cooldown_minutes: 5
+    notify: [slack, pagerduty]
+    tags: [stt, quality]
+
+  - name: llm_ttft_warning
+    description: "LLM time-to-first-token elevated"
+    metric: llm_ttft_ms
+    operator: ">"
+    threshold: 800
+    severity: warning
+    cooldown_minutes: 5
+    notify: [slack]
+    tags: [llm, latency]
+
+  - name: llm_ttft_critical
+    description: "LLM TTFT critical — conversation flow breaking"
+    metric: llm_ttft_ms
+    operator: ">"
+    threshold: 2000
+    severity: critical
+    cooldown_minutes: 3
+    notify: [slack, pagerduty]
+    tags: [llm, latency]
+
+  - name: tts_ttfb_warning
+    description: "TTS time-to-first-byte elevated"
+    metric: tts_ttfb_ms
+    operator: ">"
+    threshold: 300
+    severity: warning
+    cooldown_minutes: 5
+    notify: [slack]
+    tags: [tts, latency]
+
+  - name: tts_ttfb_critical
+    description: "TTS TTFB critical — audible delay in response"
+    metric: tts_ttfb_ms
+    operator: ">"
+    threshold: 800
+    severity: critical
+    cooldown_minutes: 3
+    notify: [slack, pagerduty]
+    tags: [tts, latency]
+
+  # ── Layer 3: User Experience ────────────────────────────────────────
+  - name: e2e_latency_warning
+    description: "End-to-end latency approaching user tolerance limit"
+    metric: e2e_latency_ms
+    operator: ">"
+    threshold: 1200
+    severity: warning
+    cooldown_minutes: 5
+    notify: [slack]
+    tags: [ux, latency]
+
+  - name: e2e_latency_critical
+    description: "E2E latency critical — users will abandon"
+    metric: e2e_latency_ms
+    operator: ">"
+    threshold: 1800
+    severity: p0
+    cooldown_minutes: 2
+    notify: [slack, pagerduty]
+    tags: [ux, latency]
+
+  - name: high_interruption_rate
+    description: "Interruption rate suggests poor turn-taking"
+    metric: interruption_rate
+    operator: ">"
+    threshold: 0.3
+    severity: warning
+    cooldown_minutes: 15
+    notify: [slack]
+    tags: [ux, conversation]
+
+  # ── Layer 4: Outcome ────────────────────────────────────────────────
+  - name: low_task_success
+    description: "Task success rate dropping below target"
+    metric: task_success_rate
+    operator: "<"
+    threshold: 0.8
+    severity: warning
+    cooldown_minutes: 30
+    notify: [slack]
+    tags: [outcome, business]
+
+  - name: critical_task_failure
+    description: "Task success rate critically low"
+    metric: task_success_rate
+    operator: "<"
+    threshold: 0.5
+    severity: critical
+    cooldown_minutes: 15
+    notify: [slack, pagerduty]
+    tags: [outcome, business]
